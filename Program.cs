@@ -18,12 +18,10 @@ namespace QRPDF
             if (args.Count() == 0)                      // Если нет дополнительных аргументов - создаем экземпляр класса CQRPdf,                     
             {                                           // используя конструктор по умолчанию;
                 
-                TestModule = new CQRPdf('C');
-                TestModule.PDFStampQRCode(TestModule.QRGenerate("EY"));
+                TestModule = new CQRPdf();
+                TestModule.PDFStampQRCode(TestModule.QRGenerate(File.ReadAllText(TestModule.QRInfoFilePath, Encoding.UTF8)));                
 
-
-                for (int i = 0; i < 20; i++)
-                    TestModule.Database_Add(TestModule.GenerateUniqueID(), "Test #" + i + " // QR Content");
+                for (int i = 0; i < 20; i++) TestModule.Database_Add(TestModule.GenerateUniqueID(), "Test #" + i + " // QR Content");
                                
 
 
@@ -56,11 +54,6 @@ namespace QRPDF
                  */
                 int filePaths = 0;
 
-                // Флаги, состояние которых нам нужно знать уже после создания экземпляра класса               
-                bool removeFlag = false,            // Флаг удаления QR-кода. Автоматически распознает его в исходном файле и удалит;
-                     stampFlag  = false;            // Флаг установки QR-кода. Сгенерирует QR-код по входному файлу (-qrfile) и
-                                                    // разместит в правом нижнем углу, либо на позиции ищеющегося QR-кода.
-
 
                 // Переменные для временного хранения путей к файлам
                 string inp_InputFilePath  = "",     // Директория входного файла;
@@ -76,8 +69,6 @@ namespace QRPDF
                         case "-out":    Console.WriteLine("Выходной файл: " + args[filePaths]); inp_InputFilePath  = args[filePaths]; break;
                         case "-inp":    Console.WriteLine("Входной файл: "  + args[filePaths]); inp_OutputFilePath = args[filePaths]; break;
                         case "-qrfile": Console.WriteLine("Выходной файл: " + args[filePaths]); inp_QRTextFilePath = args[filePaths]; break;
-                        case "-remove": removeFlag = true; break;
-                        case "-stamp":  stampFlag = true;  break;
                         case "-help":   Console.WriteLine("-out - итоговый файл;\n-file - входной файл;" +
                                                           "\n-qrfile - файл с информацией для QR-кода\n"); break;
                     }

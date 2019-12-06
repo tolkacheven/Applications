@@ -72,11 +72,11 @@ namespace QRPDF
          *  >  Configurations (массив, bool, private):
          *     Массив булевого типа, отвечающий за конфигурацию программы. Каждый элемент обозначает конкретный флаг,
          *     с которым была запущена программа. А именно:
-         *     >  Configurations[0] - Stamp Mode       (S) - режим установки QR-кода;
-         *     >  Configurations[1] - Decode Mode      (D) - режим расшифровки QR-кода;
-         *     >  Configurations[2] - Config Mode      (C) - режим конфигурации программы;
-         *     >  Configurations[3] - Multithread Mode (M) - режим поточной обработки файлов;
-         *     >  Configurations[4] - Help Mode        (H) - режим "помощи", для отображения всех флагов.
+         *     >  Configurations[0] - Stamp Mode           (S) - режим установки QR-кода;
+         *     >  Configurations[1] - Decode Mode          (D) - режим расшифровки QR-кода;
+         *     >  Configurations[2] - Config Mode          (C) - режим конфигурации программы;
+         *     >  Configurations[3] - Mass Processing Mode (M) - режим поточной обработки файлов;
+         *     >  Configurations[4] - Help Mode            (H) - режим "помощи", для отображения всех флагов.
          *
          * 
          * ******************************************************************************************************************
@@ -90,7 +90,7 @@ namespace QRPDF
          *                                > S - Stamp Mode;
          *                                > D - Decode Mode;
          *                                > C - Config Mode;
-         *                                > M - Multithread Mode;
+         *                                > M - Mass Processing Mode;
          *                                > H - Help Mode.
          *                                
          *                                
@@ -130,13 +130,16 @@ namespace QRPDF
         private string DecocedQRCodesSpreadsheet = @"c:\QRPDF Test Directory\QRTest_DecodedQRCodes.xlsx";
 
         // Директория входного(ых) файла(ов)
-        private string InputFile = @"c:\QRPDF Test Directory\QRTest_EmptyBlank.pdf";
+        private string InputFile = @"c:\QRPDF Test Directory\QRTest_blank.pdf";
 
         // Директория файла с информацией для QR-кода
         private string QRInfoFile = @"c:\QRPDF Test Directory\QRTest_QRInfo.txt";
-
+                
         // Директория файла конфигурации программы
-        private string ConfigurationsFile = @"c:\QRPDF Test Directory\QRTest_Configurations.txt";
+        private string ConfigurationsFile = @"c:\QRPDF Test Directory\QR Configuration presets\QRTest_Presets_Default.ini";
+
+        // Директория с файлами для поточной обработки
+        private string MassProcessingDirectory = @"c:\QRPDF Test Directory\QR Configuration presets\";
 
 
 
@@ -173,17 +176,42 @@ namespace QRPDF
         }
 
 
+        // Аксессор директории с файлами, для многопоточной обработки
+        // Позволяет получить и установить новое значение извне (Read and Write)
+        public string MassProcessingDirectoryPath
+        {
+            get { return MassProcessingDirectory;  }
+            set { MassProcessingDirectory = value; }
+        }
+
+
+
+        // Конфигурация программы. Флаги
+        protected bool[] Configurations = { /* Stamp       -> */ false,
+                                            /* Decode      -> */ false,
+                                            /* Config      -> */ false,
+                                            /* Multithread -> */ false,
+                                            /* Help        -> */ false};
+
+
+        
         // Типы документов
         public string[] DocumentsType = { "IN", "XZ", "MZ", "MM" };
 
-        
+
+
+        // Переменная для генерации случайных чисел
         Random rand = new Random();
 
 
-        // Приложение Excel
+
+        // Excel
         public Excel.Application excel;
-        public Excel.Worksheet sheet;
+        public Excel.Worksheet   sheet;
         public bool ExcelIsAlreadyRunning = false;
+
+
+
 
 
 
@@ -196,38 +224,26 @@ namespace QRPDF
          * ******************************************************************************************************************/
 
 
-        /* Конструктор по умолчанию. Входные данные вводятся с консоли:
+        /*                   Конструктор по умолчанию
          * 
-         * Флаг -input  - путь к входному PDF-файлу;
-         * Флаг -output - путь к итоговому PDF-файлу;
-         * Флаг -qrfile - путь к файлу с информацией для генерации QR-кода;
-         * Флаг -decode - декодируем QR-код входного файла;
-         * Флаг -stamp  - установить новый QR-код;
-         * Флаг -config - режим конфигурации (ручной ввод);
-         * Флаг -help   - флаг для вывода напоминания о всех флагах.
+         * Создает экземпляр класса с предустановленными значениями;
          * 
          * ***********************************************************/
         public CQRPdf()
         {
-            Console.Write("Input file path   -> ");
-            string inp_InputFilePath = Console.ReadLine();
+            int currentRow = 0;
+            string currentLine;
+            string path = ConfigurationsFilePath;
+            
+            using (StreamReader reader = new StreamReader(path))
+            {
+                while (reader.Peek() >= 0)
+                {
+                    currentLine = reader.ReadLine();
+                    if (currentLine == "0") Configurations[currentRow++] = false; else Configurations[currentRow++] = true;
 
-            Console.Write("Output file path  -> ");
-            string inp_OutputFilePath = Console.ReadLine();
-
-            Console.Write("QR text file path -> ");
-            string inp_QRTextFilePath = Console.ReadLine();
-
-
-            inp_InputFilePath = Regex.Replace(inp_InputFilePath, @"\t|\n|\r", "");
-            inp_OutputFilePath = Regex.Replace(inp_OutputFilePath, @"\t|\n|\r", "");
-            inp_QRTextFilePath = Regex.Replace(inp_QRTextFilePath, @"\t|\n|\r", "");
-
-
-
-            this.InputFilePath = inp_InputFilePath;
-            // this.OutputFilePath = inp_OutputFilePath;
-            // this.QRInfoFilePath = inp_QRTextFilePath;
+                }
+            }
         }
 
 
@@ -272,17 +288,34 @@ namespace QRPDF
 
 
         // Установка QR-кода в PDF-файл
-        public void PDFStampQRCode(iTextSharp.text.Image QR,      // Сформированный QR-код (преобразованный из BarcodeQRCode в Image;
-                                   int x_offset = 0,              // Отступ по оси х (по умолчанию 0   - левое верхнее положение);
-                                   int y_offset = 750)            // Отступ по оси y (по умолчанию 750 - левое верхнее положение).
+        public void PDFStampQRCode(iTextSharp.text.Image QR,      // Изображение (преобразованное из BarcodeQRCode в Image);
+                                            int xOffset = 0,      // Отступ по оси х. За начало отсчета считается левый нижний угол;
+                                            int yOffset = 755)    // Отступ по оси y. За начало отсчета считается левый нижний угол;
         {
-            Document document = new Document();
+            string CopyFileName = InputFilePath.Substring(0, InputFilePath.Length - 4) + "_QR.pdf";
+            var reader     = new PdfReader(InputFilePath);
+            var fileStream = new FileStream(CopyFileName, FileMode.Create, FileAccess.Write);
+            var document   = new Document(reader.GetPageSizeWithRotation(1));
+            var writer     = PdfWriter.GetInstance(document, fileStream);
 
-            PdfWriter.GetInstance(document, new FileStream(InputFilePath, FileMode.OpenOrCreate, FileAccess.Write));
             document.Open();
-            QR.SetAbsolutePosition(x_offset, y_offset);
-            document.Add(QR);
+
+            for (var i = 1; i <= reader.NumberOfPages; i++)
+            {
+                document.NewPage();
+                                
+                var importedPage = writer.GetImportedPage(reader, i);
+                var contentByte  = writer.DirectContent;
+
+                contentByte.BeginText();
+                QR.SetAbsolutePosition(xOffset, yOffset);
+                contentByte.AddImage(QR);
+                contentByte.EndText();
+                contentByte.AddTemplate(importedPage, 0, 0);
+            }
+
             document.Close();
+            writer.Close();
         }
 
 
@@ -290,32 +323,12 @@ namespace QRPDF
         // Генерация нового QR-кода по считанной из файла информации
         public iTextSharp.text.Image QRGenerate(string QRFileContent)
         {
-            BarcodeQRCode QRCode = new BarcodeQRCode(QRFileContent, 100, 100, null);
-
-            Console.WriteLine(">> " + QRCode.GetHashCode());
-
+            BarcodeQRCode QRCode = new BarcodeQRCode(QRFileContent, 90, 90, null);
             iTextSharp.text.Image QRCodeImage = QRCode.GetImage();
 
             return QRCodeImage;
         }
-
-
-
-        // Добавить новую запись в базу
-        public int Database_Add(string UniqueID, string Content)
-        {
-            Excel_AddNew(UniqueID, Content);
-            return 0;
-        }
-
-
-
-        // Поиск документа в общей таблице обработанных документов 
-        public void Database_FindDocumentByID(int UniqueID)
-        {
-            Excel_FindByID(UniqueID);
-        }
-
+               
 
 
 
@@ -332,51 +345,59 @@ namespace QRPDF
         private int QRCodeDecode(iTextSharp.text.Image QR)
         {
             /*
-             *  PdfReader pdf = new PdfReader(filename);  
-                PdfDictionary pg = pdf.GetPageN(pageNum);  
-                PdfDictionary res = (PdfDictionary)PdfReader.GetPdfObject(pg.Get(PdfName.RESOURCES));  
-                PdfDictionary xobj = (PdfDictionary)PdfReader.GetPdfObject(res.Get(PdfName.XOBJECT));  
+            PdfReader pdf      = new PdfReader(InputFilePath);  
+            PdfDictionary pg   = pdf.GetPageN(1);  
+            PdfDictionary res  = (PdfDictionary)PdfReader.GetPdfObject(pg.Get(PdfName.RESOURCES));  
+            PdfDictionary xobj = (PdfDictionary)PdfReader.GetPdfObject(res.Get(PdfName.XOBJECT));  
+            
+            if (xobj == null) { return 0; }
+            
+            foreach (PdfName name in xobj.Keys)  
+            {  
+                PdfObject obj = xobj.Get(name);  
+                if (!obj.IsIndirect()) { continue; }  
+               
+                PdfDictionary tg = (PdfDictionary)PdfReader.GetPdfObject(obj);  
+                PdfName type = (PdfName)PdfReader.GetPdfObject(tg.Get(PdfName.SUBTYPE));  
                 
-                if (xobj == null) { return; }
+                if (!type.Equals(PdfName.IMAGE)) { continue; }  
+               
+                int XrefIndex = Convert.ToInt32(((PRIndirectReference)obj).Number.ToString(System.Globalization.CultureInfo.InvariantCulture));  
+                PdfObject pdfObj = pdf.GetPdfObject(XrefIndex);  
+                PdfStream pdfStrem = (PdfStream)pdfObj;  
+                byte[] bytes = PdfReader.GetStreamBytesRaw((PRStream)pdfStrem);  
                 
-                foreach (PdfName name in xobj.Keys)  
-                {  
-                    PdfObject obj = xobj.Get(name);  
-                    if (!obj.IsIndirect()) { continue; }  
-                   
-                    PdfDictionary tg = (PdfDictionary)PdfReader.GetPdfObject(obj);  
-                    PdfName type = (PdfName)PdfReader.GetPdfObject(tg.Get(PdfName.SUBTYPE));  
-                    
-                    if (!type.Equals(PdfName.IMAGE)) { continue; }  
-                   
-                    int XrefIndex = Convert.ToInt32(((PRIndirectReference)obj).Number.ToString(System.Globalization.CultureInfo.InvariantCulture));  
-                    PdfObject pdfObj = pdf.GetPdfObject(XrefIndex);  
-                    PdfStream pdfStrem = (PdfStream)pdfObj;  
-                    byte[] bytes = PdfReader.GetStreamBytesRaw((PRStream)pdfStrem);  
-                    
-                    if (bytes == null) { continue }; 
-                   
-                    memStream.Position = 0;  
-                    System.Drawing.Image img = System.Drawing.Image.FromStream(memStream);
-                    
-                }
+                if (bytes == null) { continue; }; 
+               
+                //memStream.Position = 0;  
+                //System.Drawing.Image img = System.Drawing.Image.FromStream(memStream);
+                
+            }
   
-                string path = Path.Combine(String.Format(@"result-{0}.jpg", pageNum));  
-                System.Drawing.Imaging.EncoderParameters parms = new System.Drawing.Imaging.EncoderParameters(1);  
-                parms.Param[0] = new System.Drawing.Imaging.EncoderParameter(System.Drawing.Imaging.Encoder.Compression, 0);  
-                var jpegEncoder = ImageCodecInfo.GetImageEncoders().ToList().Find(x => x.FormatID == ImageFormat.Jpeg.Guid);  
-                img.Save(path, jpegEncoder, parms);
-             */
+            string path = Path.Combine(String.Format(@"result-{0}.jpg", 1));  
+            System.Drawing.Imaging.EncoderParameters parms = new System.Drawing.Imaging.EncoderParameters(1);  
+            parms.Param[0] = new System.Drawing.Imaging.EncoderParameter(System.Drawing.Imaging.Encoder.Compression, 0);  
+            var jpegEncoder = ImageCodecInfo.GetImageEncoders().ToList().Find(x => x.FormatID == ImageFormat.Jpeg.Guid);  
+            //img.Save(path, jpegEncoder, parms);
+            */
             return 0;
         }
 
 
 
+        // Генерирование уникального ID
         public string GenerateUniqueID()
         {
-            return Convert.ToString(DocumentsType[rand.Next(0, 4)] + rand.Next(1000000, 9999999));
+            int randomNumber = rand.Next(1, 9999999);
+            string resultID  = DocumentsType[rand.Next(0, 4)];
+
+            for (int i = 0; i < 7 - randomNumber.ToString().Length; i++) resultID += "0";
+
+            resultID += randomNumber.ToString();
+
+            return resultID;
         }
-        
+
 
 
         // Запуск Excel'a. Инициализация приложения, книг, листов и т.д.
@@ -393,13 +414,34 @@ namespace QRPDF
 
                 Excel_SetConfiguration();
                 ExcelIsAlreadyRunning = true;
-            } else
+            }
+            else
             {
                 return -1;
             }
 
             return 0;
         }
+               
+
+
+
+        // Добавить новую запись в базу
+        public int Database_Add(string UniqueID, string Content)
+        {
+            Excel_AddNew(UniqueID, Content);
+            return 0;
+        }
+
+
+
+
+        // Поиск документа в общей таблице обработанных документов 
+        public void Database_FindDocumentByID(string UniqueID)
+        {
+            Excel_FindByID(UniqueID);
+        }
+
 
 
 
@@ -415,14 +457,16 @@ namespace QRPDF
 
 
 
+
         // Поиск элемента по ID
-        public string Excel_FindByID(int UniqueID)
+        public string Excel_FindByID (string UniqueID)
         {
             if (ExcelIsAlreadyRunning == false)
                 Excel_RunApplication();
 
             return sheet.Cells[UniqueID, 2];
         }
+
 
 
 
@@ -434,7 +478,7 @@ namespace QRPDF
 
             int lastRow, rowsCount = sheet.Rows.Count;
 
-            Excel.Range xlRange = (Excel.Range)sheet.Cells[rowsCount, 1];
+            Excel.Range xlRange = (Excel.Range) sheet.Cells[rowsCount, 1];
             lastRow = xlRange.get_End(Excel.XlDirection.xlUp).Row;
 
 
@@ -485,7 +529,7 @@ namespace QRPDF
             // Установка шрифта и выравнивания
             // Выравнивание по центру
             sheet.Cells.Style.HorizontalAlignment = Microsoft.Office.Interop.Excel.XlHAlign.xlHAlignCenter;
-            sheet.Cells.Font.Name = "Century Gothic"; // Установка шрифта;
+            sheet.Cells.Font.Name = "Tahoma";         // Установка шрифта;
             sheet.Cells.Font.Size = 10;               // Установка размера шрифта.
 
         }
