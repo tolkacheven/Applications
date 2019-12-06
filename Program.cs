@@ -17,11 +17,20 @@ namespace QRPDF
             
             if (args.Count() == 0)                      // Если нет дополнительных аргументов - создаем экземпляр класса CQRPdf,                     
             {                                           // используя конструктор по умолчанию;
-                
-                TestModule = new CQRPdf();
-                TestModule.PDFStampQRCode(TestModule.QRGenerate(File.ReadAllText(TestModule.QRInfoFilePath, Encoding.UTF8)));                
 
-                for (int i = 0; i < 20; i++) TestModule.Database_Add(TestModule.GenerateUniqueID(), "Test #" + i + " // QR Content");
+                // 12345678912345678912345678912345678912 - 38 символов;
+                // ABCDEFGHKLMNOPR123456789123 - 27 символов
+
+
+                TestModule = new CQRPdf();
+
+                TestModule.PDFStampQRCode(TestModule.QRGenerate(File.ReadAllText(TestModule.QRInfoFilePath, Encoding.UTF8)));
+
+                //TestModule.PDFQRCodeRecognition("");
+
+                //TestModule.PDFStampQRCode_Mass(TestModule.QRGenerate(File.ReadAllText(TestModule.QRInfoFilePath, Encoding.UTF8)));                
+
+                //for (int i = 0; i < 20; i++) TestModule.Database_Add(TestModule.GenerateUniqueID(), "Test #" + i + " // QR Content");
                                
 
 
