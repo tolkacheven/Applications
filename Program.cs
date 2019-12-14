@@ -20,17 +20,20 @@ namespace QRPDF
 
                 // 12345678912345678912345678912345678912 - 38 символов;
                 // ABCDEFGHKLMNOPR123456789123 - 27 символов
+                // QRPDFR12345678912345678
 
 
                 TestModule = new CQRPdf();
 
-                TestModule.PDFStampQRCode(TestModule.QRGenerate(File.ReadAllText(TestModule.QRInfoFilePath, Encoding.UTF8)));
+                //TestModule.PDFStampQRCode(TestModule.QRGenerate(File.ReadAllText(TestModule.QRInfoFilePath, Encoding.UTF8)));
 
-                //TestModule.PDFQRCodeRecognition("");
+                TestModule.PDFQRCodeRecognition("");
 
                 //TestModule.PDFStampQRCode_Mass(TestModule.QRGenerate(File.ReadAllText(TestModule.QRInfoFilePath, Encoding.UTF8)));                
 
-                //for (int i = 0; i < 20; i++) TestModule.Database_Add(TestModule.GenerateUniqueID(), "Test #" + i + " // QR Content");
+                //for (int i = 0; i < 20; i++) TestModule.Excel_AddNew(TestModule.GenerateUniqueID(), "Test #" + i + " // QR Content");
+
+                //TestModule.Excel_Save();
                                
 
 

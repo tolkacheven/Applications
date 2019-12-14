@@ -23,6 +23,7 @@ namespace QRPDF
 {
     public class CQRPdf
     {
+
         /*****************************************************************************************************************
          *                                                       ОПИСАНИЕ
          * ***************************************************************************************************************
@@ -31,7 +32,10 @@ namespace QRPDF
          *  >  Генерировать по входным данным QR-коды;
          *  >  Размещать созданные QR-коды в переданных PDF-файлах;
          *  >  Распознавать QR-коды и возвращать их значения под уникальными ID;
-         *  >  Поточно обрабатывать переданные файлы.
+         *  >  Поточно обрабатывать переданные файлы;
+         *  >  Сохранять полученные данные в Excel-таблице;
+         *  >  
+         *  
          *  
          *  
          * ****************************************************************************************************************
@@ -49,6 +53,7 @@ namespace QRPDF
          *                          C:\Secured Directory\QRSpreadsheet.xslx;
          *                          
          * (*) QRFile - файл с информацией, которая должна быть зашифрована в QR-код.
+         * 
          * 
          * 
          * *****************************************************************************************************************
@@ -79,75 +84,145 @@ namespace QRPDF
          *  >  Configurations (массив, bool, private):
          *     Массив булевого типа, отвечающий за конфигурацию программы. Каждый элемент обозначает конкретный флаг,
          *     с которым была запущена программа. А именно:
-         *     >  Configurations[0] - Stamp Mode           (S) - режим установки QR-кода;
-         *     >  Configurations[1] - Decode Mode          (D) - режим расшифровки QR-кода;
-         *     >  Configurations[2] - Config Mode          (C) - режим конфигурации программы;
-         *     >  Configurations[3] - Mass Processing Mode (M) - режим поточной обработки файлов;
-         *     >  Configurations[4] - Help Mode            (H) - режим "помощи", для отображения всех флагов.
+         *     >  Configurations[0] - Stamp         Mode (-stamp)     - режим установки QR-кода;
+         *     >  Configurations[1] - Stamp  All    Mode (-stampall)  - режим поточной установки QR-кода;
+         *     >  Configurations[2] - Decode        Mode (-decode)    - режим расшифровки QR-кода;
+         *     >  Configurations[3] - Decode All    Mode (-decodeall) - режим поточной расшифровки QR-кода;
+         *     >  Configurations[4] - Configuration Mode (-config)    - режим конфигурации программы.
          *
          * 
+         * 
          * ******************************************************************************************************************
-         *                                               ПРОГРАММНЫЙ ИНТЕРФЕЙС
+         *                                             ПРОГРАММНЫЙ ИНТЕРФЕЙС
          * ******************************************************************************************************************
          * 
-         *  >  public CQRPdf()          - Конструктор по умолчанию. Создает экземпляр класса с предустановленными значениями;
+         * #######################################
+         * ###       Конструкторы класса       ###
+         * #######################################
+         * 
+         *     >  public CQRPdf()          - Конструктор по умолчанию. Создает экземпляр класса с предустановленными значениями;
          *  
-         *  
-         *  >  public CQRPdf(char flag) - Конструктор с одним параметром. Значения флагов:
-         *                                > S - Stamp Mode;
-         *                                > D - Decode Mode;
-         *                                > C - Config Mode;
-         *                                > M - Mass Processing Mode;
-         *                                > H - Help Mode.
          *                                
          *                                
-         *  >  private CQRPdf(string,   - Конструктор, вызываемый только режимом конфигурации, все три параметра обозначают три директории:
-         *                    string,     InputFilePath, DecodedQRCodesSpreadsheet, QRInfoFilePath.
-         *                    string)
+         *     >  private CQRPdf(string,   - Конструктор, вызываемый только режимом конфигурации, все три параметра обозначают три директории:
+         *                       string,     InputFilePath, DecodedQRCodesSpreadsheet, QRInfoFilePath.
+         *                       string)
+         *                       
+         *         
+         *         
+         *         
+         * ########################################
+         * ###   Создание и установка QR-кода   ###
+         * ########################################
          *                    
-         *                    
-         *  >  public void PDFStampQRCode(iTextSharp.text.Image QR,
-         *                                int x_offset = 0,   
-         *                                int y_offset = 750)
+         *     >  public void PDFStampQRCode(iTextSharp.text.Image QR,
+         *                                   int x_offset = 0,   
+         *                                   int y_offset = 750)
          *                                
-         *                              - Функция установки QR-кода. Принимает три параметра:
-         *                                > iTextSharp.text.Image QR - преобразованный QR-код (из типа BarcodeQRCode в Image);
-         *                                > x_offset - опциональный параметр (по умолчанию   0) - отступ QR-кода по оси x;
-         *                                > y_offset - опциональный параметр (по умолчанию 750) - отступ QR-кода по оси y.
-         *                                
-         *                                
-         *  >  public iTextSharp.text.Image QRGenerate(string QRFileContent)
-         *                              - Функция, генерирующая QR-код по содержимому файла. Принимает единственный аргумент -
-         *                                путь к файлу QRFile.
+         *                                   - Функция установки QR-кода. Принимает три параметра:
+         *                                     > iTextSharp.text.Image QR - преобразованный QR-код (из типа BarcodeQRCode в Image);
+         *                                     > x_offset - опциональный параметр (по умолчанию   0) - отступ QR-кода по оси x;
+         *                                     > y_offset - опциональный параметр (по умолчанию 750) - отступ QR-кода по оси y.
          *                                
          *                                
-         *  >  public void PDFQRCodeRecognition(string InputFilePath)
+         *     >  public iTextSharp.text.Image QRGenerate(string QRFileContent)
+         *                                   - Функция, генерирующая QR-код по содержимому файла. Принимает единственный аргумент -
+         *                                     путь к файлу QRFile.
+         *                                     
+         *                                     
+         *                                     
+         *                                     
+         * ########################################
+         * ###       Распознавание QR-кода      ###       
+         * ########################################
+         * 
+         *       >  public void PDFQRCodeRecognition(string InputFilePath)
          *                              - Функция распознавания QR-кода в PDF-файле. Не будет иметь параметров, т.к. путь ко входному
          *                                файлу уже задан.
          *                                
          *                               
-         *  > private string QRCodeDecode(iTextSharp.text.Image QR)
-         *                              - Функция расшифровки (считывания) QR-кода. Принимает один параметр - преобразованный
-         *                                в Image считанный QR-код (возможно лучше преобразовать в BarcodeQRCode).
+         *       >  private string QRCodeDecode(iTextSharp.text.Image QR)
+         *                                   - Функция расшифровки (считывания) QR-кода. Принимает один параметр - преобразованный
+         *                                     в Image считанный QR-код (возможно лучше преобразовать в BarcodeQRCode).
+         *                                     
+         *                                     
+         *                                     
+         *                                     
+         * ########################################
+         * ###     Работа с таблицами Excel     ###
+         * ########################################
+         *       
+         *       > public int Excel_RunApplication()     - Запуск Excel'a. Инициализация приложения, книг, листов и т.д;
+         *      
+         *       > private void Excel_SetConfiguration() - Конфигурация Excel таблицы. Установка шрифтов, наименований
+         *                                                 колонок и т.д;
+         *         
+         *       > private int Excel_Save()              - Сохранение таблицы;
+         *       
+         *       > public string Excel_FindByID (string UniqueID)
+         *                                               - Поиск в таблице по уникальному ID;
+         *                                               
+         *       > private int Excel_FindFirstEmpty()    - Поиск первой пустой строки (нужен для добавления новых элементов);
+         *       
+         *       > public int Excel_AddNew(string UniqueID, string Content)
+         *                                               - Добавить новый элемент в таблицу Excel.
+         *                  
+         *                  
+         *                  
+         *                  
+         *                  
+         * ########################################
+         * ###        Работа с принтером        ###
+         * ########################################
+         * 
          * 
          * *****************************************************************************************************************/
 
 
+
+
+
+
+
+        /******************************************************************************************************************
+         *                                                    ДИРЕКТОРИИ
+         ******************************************************************************************************************/
+
+        // Корневая директория
+        static private string rootDirectory      = @"c:\QRPDF Test Directory";
+
         // Директория таблицы Excel, в которой хранятся расшифрованные QR-коды;
-        private string DecocedQRCodesSpreadsheet = @"c:\QRPDF Test Directory\QRTest_DecodedQRCodes.xlsx";
+        private string DecocedQRCodesSpreadsheet = rootDirectory + @"\QRTest_DecodedQRCodes.xlsx";
 
         // Директория входного(ых) файла(ов)
-        private string InputFile = @"c:\QRPDF Test Directory\QRTest_blank.pdf";
+        private string InputFile                 = rootDirectory + @"\QRTest_blank.pdf";
 
         // Директория файла с информацией для QR-кода
-        private string QRInfoFile = @"c:\QRPDF Test Directory\QRTest_QRInfo.txt";
+        private string QRInfoFile                = rootDirectory + @"\QRTest_QRInfo.txt";
                 
         // Директория файла конфигурации программы
-        private string ConfigurationsFile = @"c:\QRPDF Test Directory\QR Configuration Presets\QRTest_Presets_Default.ini";
+        private string ConfigurationsFile        = rootDirectory + @"\QR Configuration Presets\QRTest_Presets_Default.ini";
 
         // Директория с файлами для поточной обработки
-        private string MassProcessingDirectory = @"c:\QRPDF Test Directory\QR Mass Processing Mode Test\";
+        private string MassProcessingDirectory   = rootDirectory + @"\QR Mass Processing Mode Test\";
 
+
+
+
+
+
+
+        /******************************************************************************************************************
+         *                                                АКСЕССОРЫ ДИРЕКТОРИЙ
+         ******************************************************************************************************************/
+
+
+        // Аксессор корневой директории
+        public string RootDirectoryPath
+        {
+            get { return rootDirectory;  }
+            set { rootDirectory = value; }
+        }
 
 
         // Аксессор директории таблицы Excel с расшифрованными QR-кодами
@@ -157,8 +232,7 @@ namespace QRPDF
             get { return DecocedQRCodesSpreadsheet; }
         }
         
-
-
+        
         // Аксессор директории входного(ых) файла(ов)
         // Позволяет получить и установить новое значение извне (Read and Write)
         public string InputFilePath
@@ -167,15 +241,13 @@ namespace QRPDF
             set { InputFile = value; }
         }
 
-
-
+        
         // Аксессор директории файла с информацией для QR-кода
         // Позволяет получить значение извне (Readonly)
         public string QRInfoFilePath
         {
             get { return QRInfoFile; }
         }
-
 
         
         // Аксессор директории файла конфигурации программы
@@ -197,12 +269,23 @@ namespace QRPDF
 
 
 
+
+
+
+
+        /******************************************************************************************************************
+         *                                                  КОНФИГУРАЦИЯ
+         ******************************************************************************************************************/
+
+
         // Конфигурация программы. Флаги
-        protected bool[] Configurations = { /* Stamp       -> */ false,
+        protected bool[] Configurations = { 
+                                            /* Stamp       -> */ false,
+                                            /* Stamp  All  -> */ false,
                                             /* Decode      -> */ false,
-                                            /* Config      -> */ false,
-                                            /* Mass Proc.  -> */ false,
-                                            /* Help        -> */ false};
+                                            /* Decode All  -> */ false,
+                                            /* Config      -> */ false
+                                          };
 
 
         
@@ -210,18 +293,46 @@ namespace QRPDF
         public string[] DocumentsType = { "IN", "XZ", "MZ", "MM" };
 
 
+        
+
+
+
+
+
+        /******************************************************************************************************************
+         *                                                  РАБОТА С EXCEL
+         ******************************************************************************************************************/
+
+        public Excel.Application excel;                 // Объект для работы с функциями приложения; 
+
+        public Excel.Worksheet   sheet;                 // Объект для работы с функциями листа;
+
+        public bool ExcelIsAlreadyRunning = false;      // Флаг, отвечающий за текущее состояние экселя.
+
+
+
+
+
+
+
+
+        /******************************************************************************************************************
+         *                                               РАБОТА С ПРИНТЕРОМ
+         ******************************************************************************************************************/
+
+
+
+
+
+
+
+
+        /******************************************************************************************************************
+         *                                                    ОСТАЛЬНОЕ
+         ******************************************************************************************************************/
 
         // Переменная для генерации случайных чисел
         Random rand = new Random();
-
-
-
-        // Excel
-        public Excel.Application excel;
-        public Excel.Worksheet   sheet;
-        public bool ExcelIsAlreadyRunning = false;
-
-
 
 
 
@@ -389,18 +500,18 @@ namespace QRPDF
         // Распознавание QR-кода в PDF-файле
         public void PDFQRCodeRecognition(string PDF)
         {
-            Bitmap bmp = new Bitmap("c:\\QRPDF Test Directory\\Cutted QR\\Test13.png");
+            Bitmap bmp = new Bitmap("c:\\QRPDF Test Directory\\Cutted QR\\Test11.png");
             BarcodeResult barcode = BarCodeScanner.ScanSingle(bmp);
             Console.WriteLine("barcode data:{0}.", barcode.Data);
 
-            /*
-            BarcodeResult[] results = BarCodeScanner.Scan("c:\\QRPDF Test Directory\\Cutted QR\\Test7.png", BarCodeType.QRCode);
+            
+            BarcodeResult[] results = BarCodeScanner.Scan("c:\\QRPDF Test Directory\\Cutted QR\\Test11.png", BarCodeType.QRCode);
 
             foreach (BarcodeResult result in results)
             {
                 Console.WriteLine(result.BarType.ToString() + "-" + result.Data);
             }
-            */
+
             Console.ReadKey();
         }
 
@@ -410,7 +521,6 @@ namespace QRPDF
         // Расшифровка QR-кода
         private int QRCodeDecode(iTextSharp.text.Image QR)
         {
-            /*
             PdfReader pdf      = new PdfReader(InputFilePath);  
             PdfDictionary pg   = pdf.GetPageN(1);  
             PdfDictionary res  = (PdfDictionary)PdfReader.GetPdfObject(pg.Get(PdfName.RESOURCES));  
@@ -424,7 +534,7 @@ namespace QRPDF
                 if (!obj.IsIndirect()) { continue; }  
                
                 PdfDictionary tg = (PdfDictionary)PdfReader.GetPdfObject(obj);  
-                PdfName type = (PdfName)PdfReader.GetPdfObject(tg.Get(PdfName.SUBTYPE));  
+                PdfName type = (PdfName) PdfReader.GetPdfObject(tg.Get(PdfName.SUBTYPE));  
                 
                 if (!type.Equals(PdfName.IMAGE)) { continue; }  
                
@@ -445,7 +555,7 @@ namespace QRPDF
             parms.Param[0] = new System.Drawing.Imaging.EncoderParameter(System.Drawing.Imaging.Encoder.Compression, 0);  
             var jpegEncoder = ImageCodecInfo.GetImageEncoders().ToList().Find(x => x.FormatID == ImageFormat.Jpeg.Guid);  
             //img.Save(path, jpegEncoder, parms);
-            */
+
             return 0;
         }
 
@@ -490,26 +600,7 @@ namespace QRPDF
 
             return 0;
         }
-               
-
-
-
-        // Добавить новую запись в базу
-        public int Database_Add(string UniqueID, string Content)
-        {
-            Excel_AddNew(UniqueID, Content);
-            return 0;
-        }
-
-
-
-
-        // Поиск документа в общей таблице обработанных документов 
-        public void Database_FindDocumentByID(string UniqueID)
-        {
-            Excel_FindByID(UniqueID);
-        }
-
+             
 
 
 
@@ -603,4 +694,6 @@ namespace QRPDF
         }        
     }
 }
+
+
 
