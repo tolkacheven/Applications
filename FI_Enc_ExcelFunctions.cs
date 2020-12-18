@@ -23,8 +23,6 @@ namespace FI_Enc_TablesConcatenation
             bool col_width_autofit = (col_width == -1) ? true : false;
 
             GetAllCells.RowHeight = 50;
-            //foreach (Excel.Range row in GetAllCells.Rows)
-            //    row.RowHeight = 50;
 
             if (col_width_autofit == true)
                 foreach (Excel.Range column in GetAllCells.Columns)
@@ -113,42 +111,48 @@ namespace FI_Enc_TablesConcatenation
         // Функция сведения двух таблиц
         public static int Excel_PivotTable(Excel.Application excel_application, Excel.Worksheet bank_report_ws, string ws1_column, Excel.Worksheet worksheet_2, string ws2_column)
         {
-            /*
-            Excel.Range currentFind = null;
-            Excel.Range firstFind = null;
 
-            Excel.Range Fruits = Application.get_Range("A1", "B3");
-            // You should specify all these parameters every time you call this method,
-            // since they can be overridden in the user interface. 
-            currentFind = Fruits.Find("apples", missing,
-                Excel.XlFindLookIn.xlValues, Excel.XlLookAt.xlPart,
-                Excel.XlSearchOrder.xlByRows, Excel.XlSearchDirection.xlNext, false,
-                missing, missing);
+            Excel.Range pivot_data = bank_pivot_ws.UsedRange;
 
-            while (currentFind != null)
-            {
-                // Keep track of the first range you find. 
-                if (firstFind == null)
-                {
-                    firstFind = currentFind;
-                }
+            Excel.Range pivot_destination = bank_pivot_ws.get_Range("A46", "A46");
 
-                // If you didn't move to a new range, you are done.
-                else if (currentFind.get_Address(Excel.XlReferenceStyle.xlA1)
-                      == firstFind.get_Address(Excel.XlReferenceStyle.xlA1))
-                {
-                    break;
-                }
+            bank_pivot_wb.PivotTableWizard(
+                    Excel.XlPivotTableSourceType.xlDatabase,
+                    pivot_data,
+                    pivot_destination,
+                    "Исходные данные",
+                    true,
+                    true,
+                    true,
+                    true,
+                    Type.Missing,
+                    Type.Missing,
+                    false,
+                    false,
+                    Excel.XlOrder.xlDownThenOver,
+                    0,
+                    Type.Missing,
+                    Type.Missing
+            );
 
-                currentFind.Font.Color = System.Drawing.ColorTranslator.ToOle(System.Drawing.Color.Red);
-                currentFind.Font.Bold = true;
+            // Set variables used to manipulate the Pivot Table.
+            Excel.PivotTable pivot_table = (Excel.PivotTable) bank_pivot_ws.PivotTables("Исходные данные");
 
-                currentFind = Fruits.FindNext(currentFind);
-            }
-            */
+            Excel.PivotField Y = ((Excel.PivotField) pivot_table.PivotFields("Период"));
+            Excel.PivotField M = ((Excel.PivotField) pivot_table.PivotFields("Подразделение"));
+            Excel.PivotField sum_of_doc = ((Excel.PivotField) pivot_table.PivotFields("Сумма"));
+
+            Y.Orientation = Excel.XlPivotFieldOrientation.xlColumnField;
+            M.Orientation = Excel.XlPivotFieldOrientation.xlRowField;
+            sum_of_doc.Orientation = Excel.XlPivotFieldOrientation.xlDataField;
+            sum_of_doc.Function = Excel.XlConsolidationFunction.xlSum;
+
             return 0;
         }
 
+        
+        
+            ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
 
 
@@ -157,44 +161,12 @@ namespace FI_Enc_TablesConcatenation
             string Message = string.Empty;
             bool Success = false;
 
+            ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
             // Конфигурация приложения Эксель
             Excel.Application excel_app = new Excel.Application();
             excel_app.Visible = true;
             excel_app.DisplayAlerts = false;
-
-
-            /**************************************/
-            /*****         АЛЬФА-БАНК         *****/
-            /**************************************/
-            string alfabank_report_path = "C:\\MagnitTest\\Альфа-Банк\\Альфа-банк.xlsx",
-                   alfabank_TID_path = "C:\\MagnitTest\\Альфа-Банк\\Альфа-банк ТИД.xlsx",
-                   alfabank_pivot_path = "C:\\MagnitTest\\Альфа-Банк\\Альфа-банк Свод.xlsx",
-                   alfabank_ws_name = "Исходные данные",
-                   alfabank_TID_ws_name = "Адреса и тиды",
-                   alfabank_pivot_source_ws_name = "Исходные данные";
-
-
-            /**************************************/
-            /*****             ВТБ            *****/
-            /**************************************/
-            string vtb_report_path = "C:\\MagnitTest\\ВТБ\\ВТБ.xlsx",
-                   vtb_TID_path = "C:\\MagnitTest\\ВТБ\\ВТБ ТИД.xlsx",
-                   vtb_pivot_path = "C:\\MagnitTest\\ВТБ\\ВТБ Свод.xlsx",
-                   vtb_ws_name = "Исходник",
-                   vtb_TID_ws_name = "Адреса и тиды", 
-                   vtb_pivot_source_ws_name = "Исходные данные";
-
-
-            /**************************************/
-            /*****             ГПБ            *****/
-            /**************************************/
-            string gpb_report_path = "C:\\MagnitTest\\ГПБ\\ГПБ.xlsx",
-                   gpb_TID_path = "C:\\MagnitTest\\ГПБ\\ГПБ ТИД.xlsx",
-                   gpb_pivot_path = "C:\\MagnitTest\\ГПБ\\ГПБ Свод.xlsx",
-                   gpb_ws_name = "Исходные данные",
-                   gpb_TID_ws_name = "Единые ТИД",
-                   gpb_pivot_source_ws_name = "Исходные данные";
 
 
             /**************************************/
@@ -276,6 +248,7 @@ namespace FI_Enc_TablesConcatenation
                     }
             }
 
+            ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
             // Открыть отчет робота и считать информацию
             bank_report_wb = excel_app.Workbooks.Open(bank_report_path, ReadOnly: true);
@@ -323,22 +296,8 @@ namespace FI_Enc_TablesConcatenation
                     Type.Missing
             );
 
-            // Set variables used to manipulate the Pivot Table.
-            Excel.PivotTable pivot_table = (Excel.PivotTable) bank_pivot_ws.PivotTables("Исходные данные");
-
-            Excel.PivotField Y = ((Excel.PivotField) pivot_table.PivotFields("Период"));
-            Excel.PivotField M = ((Excel.PivotField) pivot_table.PivotFields("Подразделение"));
-            Excel.PivotField sum_of_doc = ((Excel.PivotField) pivot_table.PivotFields("Сумма"));
-
-            Y.Orientation = Excel.XlPivotFieldOrientation.xlColumnField;
-            M.Orientation = Excel.XlPivotFieldOrientation.xlRowField;
-            sum_of_doc.Orientation = Excel.XlPivotFieldOrientation.xlDataField;
-            sum_of_doc.Function = Excel.XlConsolidationFunction.xlSum;
-
-
             ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-            /*
             foreach (var item in bank_report_headers)
                 Console.WriteLine("Report " + item.Key + " -> " + item.Value);
 
@@ -350,8 +309,8 @@ namespace FI_Enc_TablesConcatenation
 
 
 
-            //try
-            //{
+            try
+            {
                 if (excel_app == null)
                     throw new Exception("Excel could not be started");
 
@@ -415,10 +374,10 @@ namespace FI_Enc_TablesConcatenation
                     }
                 }            
                 bank_pivot_wb.Save();
-            */
-            //}
-            //catch (Exception e) { Message = Convert.ToString(e); }
-            //finally { bank_report_wb.Close(false); bank_refbook_wb.Close(false); bank_pivot_wb.Close(SaveChanges: true, Filename: bank_pivot_path); }
+       
+            }
+            catch (Exception e) { Message = Convert.ToString(e); }
+            finally { bank_report_wb.Close(false); bank_refbook_wb.Close(false); bank_pivot_wb.Close(SaveChanges: true, Filename: bank_pivot_path); }
         }
     }
 }
